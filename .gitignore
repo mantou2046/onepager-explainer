@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+node_modules/
+tts_out/
+.DS_Store
+*.pdf
