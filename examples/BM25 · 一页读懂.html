@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>BM25 · 一页读懂</title>
+<style>
+:root{
+  --bg:#F6F7F9; --card:#FFFFFF; --ink:#182130; --mut:#4E5A68; --line:#D8DEE7;
+  --acc:#2B50C8; --onacc:#FFFFFF; --code:#EEF1F6; --codeink:#26314A;
+  --train:#96600A; --file:#6536B8; --open:#166E46; --shut:#AE352A;
+  --warnbg:#FBF0DC; --badbg:#FBE9E6;
+  --serif:"Noto Serif SC","Noto Serif CJK SC","Source Han Serif SC","Songti SC","STSong","SimSun",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+}
+html[data-theme="dark"]{
+  --bg:#11151C; --card:#1A2029; --ink:#E9EDF4; --mut:#A9B3C1; --line:#2D3542;
+  --acc:#86A6FF; --onacc:#11151C; --code:#141A23; --codeink:#C4CFE2;
+  --train:#E3A83E; --file:#B79CFF; --open:#5CC98A; --shut:#FF8A7A;
+  --warnbg:#2E2410; --badbg:#331B16;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.75}
+.wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+p,li,.lead,dd,blockquote{max-width:40em}
+h1{font-family:var(--serif);font-size:32px;line-height:1.35;margin:0 0 10px;font-weight:700;text-wrap:balance}
+h2{font-family:var(--serif);font-size:24px;line-height:1.4;margin:0 0 6px;font-weight:700}
+h3{font-size:19px;margin:0 0 6px;font-weight:700}
+.big{font-size:19px;font-weight:700;line-height:1.65}
+.small{font-size:14px;color:var(--mut)}
+.tag{font-size:14px;color:var(--acc);font-weight:700;letter-spacing:.06em;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.tag::after{content:"";height:1px;width:44px;background:var(--acc)}
+section{margin:36px 0;scroll-margin-top:66px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin:16px 0}
+.nw{white-space:nowrap}
+code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:14px;background:var(--code);color:var(--codeink);padding:1px 6px;border-radius:6px}
+.formula{background:var(--code);color:var(--codeink);border:1px solid var(--line);border-radius:12px;padding:16px 20px;font-size:19px;text-align:center;margin:16px 0;font-weight:600}
+[data-k]{--k:var(--acc)}
+[data-k="train"]{--k:var(--train)} [data-k="file"]{--k:var(--file)} [data-k="open"]{--k:var(--open)} [data-k="shut"]{--k:var(--shut)}
+.kcard{border-left:4px solid var(--k)}
+.kcard h3{color:var(--k)}
+.nav{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--line)}
+.nav-in{max-width:1000px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:16px;min-height:52px}
+.nav-links{display:flex;gap:4px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;flex:1}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links a{color:var(--mut);text-decoration:none;font-size:14px;padding:6px 10px;border-radius:8px;white-space:nowrap}
+.nav-links a.on{color:var(--acc);font-weight:700}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#themebtn{flex:none;background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px 14px;font-size:14px;cursor:pointer;min-height:36px}
+.hero{display:grid;grid-template-columns:5fr 7fr;gap:24px;align-items:center;margin-top:28px}
+.hero-motif{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.hero-motif svg{width:100%;height:auto;display:block}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+.stat .n{font-size:24px;font-weight:700;color:var(--acc);line-height:1.3}
+.stat .d{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.5}
+.twrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);margin:16px 0}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums;table-layout:fixed;width:100%}
+th,td{padding:10px 14px;text-align:left;font-size:14px;vertical-align:top;border-top:1px solid var(--line);overflow-wrap:anywhere}
+thead th{border-top:none;font-size:12.5px;color:var(--mut);font-weight:700;background:var(--code)}
+td.t{font-weight:700;white-space:nowrap}
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+.ctl{margin:14px 0}
+.ctl label{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:4px}
+.ctl label output{font-weight:700;color:var(--acc)}
+.ctl input[type=range]{width:100%;accent-color:var(--acc);min-height:32px}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pbtn{background:var(--acc);color:var(--onacc);border:none;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer;min-height:44px}
+.pbtn.alt{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.readout{font-size:14px;background:var(--code);border-radius:12px;padding:14px 16px;margin-top:14px;line-height:1.9}
+.readout b{color:var(--acc)}
+svg text{font-family:var(--sans)}
+.scene-wrap svg{width:100%;height:auto;display:block}
+.scene-read{font-size:19px;font-weight:700;text-align:center;margin-top:6px}
+.stepper{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.stepper .st{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer;min-height:44px}
+.stepper .st.on{border-color:var(--acc);color:var(--acc);font-weight:700;background:color-mix(in srgb,var(--acc) 8%,var(--card))}
+.stepbody{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+.stepbody .term{font-size:14px;color:var(--acc);font-weight:700;margin-bottom:6px}
+.step-grid{display:grid;grid-template-columns:7fr 5fr;gap:24px;align-items:start}
+.mini-scene{background:var(--code);border-radius:12px;padding:10px}
+.mini-scene svg{width:100%;height:auto;display:block}
+.qctl{display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.qctl button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer;min-height:44px}
+.qctl .cnt{margin-left:auto;color:var(--mut);font-size:14px}
+.hint{font-size:12.5px;color:var(--mut);margin-top:10px}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:12px 0}
+summary{font-weight:700;cursor:pointer;font-size:16px}
+details p{margin:10px 0 4px}
+.pitfall{background:var(--warnbg);border:1px solid var(--train);border-radius:12px;padding:20px 24px;margin:16px 0}
+.pitfall h3{color:var(--train);margin-top:0}
+.pitfall li{margin:6px 0}
+.closing{background:color-mix(in srgb,var(--acc) 8%,var(--card));border:1px solid var(--acc);border-radius:12px;padding:24px;margin:16px 0}
+footer{border-top:1px solid var(--line);margin-top:36px;padding:20px 0 32px;font-size:12.5px;color:var(--mut);line-height:1.8}
+footer p{max-width:none}
+.rv{opacity:0;transform:translateY(10px);transition:opacity .35s ease,transform .35s ease}
+.rv.in{opacity:1;transform:none}
+.print-only{display:none}
+@media screen and (max-width:1100px){.hero{grid-template-columns:1fr}.demo-grid{grid-template-columns:1fr}.step-grid{grid-template-columns:1fr}}
+@media screen and (max-width:720px){
+  th,td{display:block;width:100%;border-top:none;padding:4px 14px}
+  thead{display:none}
+  tr{display:block;border-top:1px solid var(--line);padding:8px 0}
+  td.t{white-space:normal}
+  td::before{content:attr(data-th);display:block;font-size:12.5px;color:var(--mut);font-weight:700}
+  .nums{grid-template-columns:1fr 1fr}
+}
+@media screen and (max-width:480px){.nums{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+.grid>*,.grid2>*,.grid3>*,.g2>*,.g3>*,.vs>*,.dash>*,.nums>*,.stepper>*,.steps>*{min-width:0}
+p,li,dd,td,th,code{overflow-wrap:anywhere}
+pre,.twrap{max-width:100%;overflow-x:auto}
+@page{size:A4;margin:13mm}
+:root{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+@media print{
+  :root,html[data-theme="dark"]{--bg:#FFFFFF;--card:#FFFFFF;--ink:#182130;--mut:#4E5A68;--line:#D8DEE7;--acc:#2B50C8;--onacc:#FFFFFF;--code:#EEF1F6;--codeink:#26314A;--train:#96600A;--file:#6536B8;--open:#166E46;--shut:#AE352A;--warnbg:#FBF0DC;--badbg:#FBE9E6}
+  .nav,#themebtn,.qctl,.presets,.hint{display:none!important}
+  .rv{opacity:1!important;transform:none!important}
+  .card,.stepbody,.stat,.hero-motif,details,.pitfall{break-inside:avoid}
+  .twrap,table{break-inside:auto!important}
+  .tblwrap,.scrollx,.twrap,pre{overflow:visible!important;max-height:none!important;max-width:none!important}
+  table{width:100%!important;min-width:0!important;max-width:100%!important;font-size:12.5px}
+  th,td{overflow-wrap:anywhere}
+  pre,code{white-space:pre-wrap!important;word-break:break-all}
+  svg,img,canvas{max-width:100%!important;height:auto!important}
+  thead{display:table-header-group}
+  .stepper,.demo-live{display:none!important}
+  .print-only{display:block!important}
+}
+
+.docrow{display:grid;grid-template-columns:118px 1fr 64px;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.docrow:first-child{border-top:none}
+.docrow .dn{font-weight:700;font-size:14px}
+.docrow .dm{font-size:12.5px;color:var(--mut);line-height:1.5}
+.bar{height:14px;border-radius:7px;background:var(--code);position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--acc);transition:width .3s ease}
+.docrow .ds{font-size:19px;font-weight:700;text-align:right}
+.tokchip{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer;min-height:44px}
+.tokchip.on{border-color:var(--acc);color:var(--acc);font-weight:700;background:color-mix(in srgb,var(--acc) 8%,var(--card))}
+.minirow{display:grid;grid-template-columns:86px 1fr 56px;gap:10px;align-items:center;padding:6px 0;font-size:14px}
+.minirow .bar{height:10px}
+.mini-note{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.6}
+@media screen and (max-width:720px){.docrow{grid-template-columns:96px 1fr 52px}}
+</style>
+</head>
+<body>
+<nav class="nav"><div class="nav-in">
+  <div class="nav-links" id="navlinks">
+    <a href="#s1">01 是什么</a><a href="#s2">02 三条规矩</a><a href="#s3">03 动手演示</a><a href="#s4">04 流程讲解</a><a href="#s5">05 速查与带走</a>
+  </div>
+  <button id="themebtn" type="button" aria-label="切换明暗主题">深色</button>
+</div></nav>
+<div class="wrap">
+
+<header class="hero">
+  <div class="rv">
+    <div class="tag">一页读懂 · RAG 检索</div>
+    <h1>BM25：给关键词打分的<br>那套老规矩</h1>
+    <p class="lead">接你这两天看的检索线：余弦相似度管「意思像不像」，<strong>BM25 管「字面对没对上」</strong>。你刚剪藏的 RRF，要合并的两路里就有一路是它。这页讲它怎么给每篇文档打分、排名。</p>
+  </div>
+  <div class="hero-motif rv" aria-label="问题苹果手机在五篇文档中的 BM25 排名示意">
+    <svg viewBox="0 0 520 300" role="img" aria-label="三篇文档按 BM25 分数排队，评测篇第一">
+      <text x="20" y="38" font-size="14" fill="var(--mut)">问题：</text>
+      <rect x="76" y="16" width="72" height="30" rx="15" fill="none" stroke="var(--acc)" stroke-width="2"/>
+      <text x="112" y="37" text-anchor="middle" font-size="14" fill="var(--acc)" font-weight="700">苹果</text>
+      <rect x="158" y="16" width="72" height="30" rx="15" fill="none" stroke="var(--acc)" stroke-width="2"/>
+      <text x="194" y="37" text-anchor="middle" font-size="14" fill="var(--acc)" font-weight="700">手机</text>
+      <text x="20" y="96" font-size="14" fill="var(--ink)" font-weight="700">评测篇</text>
+      <rect x="110" y="80" width="330" height="16" rx="8" fill="var(--acc)"/>
+      <text x="452" y="95" font-size="14" fill="var(--ink)" font-weight="700">1.24</text>
+      <text x="20" y="146" font-size="14" fill="var(--ink)" font-weight="700">短帖篇</text>
+      <rect x="110" y="130" width="295" height="16" rx="8" fill="var(--acc)" opacity=".75"/>
+      <text x="452" y="145" font-size="14" fill="var(--ink)" font-weight="700">1.11</text>
+      <text x="20" y="196" font-size="14" fill="var(--ink)" font-weight="700">长稿篇</text>
+      <rect x="110" y="180" width="160" height="16" rx="8" fill="var(--acc)" opacity=".5"/>
+      <text x="452" y="195" font-size="14" fill="var(--ink)" font-weight="700">0.60</text>
+      <text x="20" y="252" font-size="12.5" fill="var(--mut)">三篇命中的词差不多，分差在哪？——这就是这页要拆的</text>
+      <text x="20" y="276" font-size="12.5" fill="var(--mut)">分数是第三屏那个小库里当场算的，不是示意数</text>
+    </svg>
+  </div>
+</header>
+
+<div class="nums rv">
+  <div class="stat"><div class="n">1994</div><div class="d">BM25 被提出来的年份（英国 Okapi 实验室）。三十多年过去，它仍是 Elasticsearch 等搜索引擎出厂自带的默认打分法</div></div>
+  <div class="stat"><div class="n">2 个</div><div class="d">它全身只有两个可调旋钮：k1 管「词出现多次还涨不涨分」，b 管「长文档打几折」。这页的演示就拧这两个</div></div>
+  <div class="stat"><div class="n">约 1.9 倍</div><div class="d">在第三屏的小库里，「手机」比「苹果」稀有，它的稀有度权重 0.54 对 0.29——同一个词，稀有程度不同，身价差近一倍</div></div>
+</div>
+
+<section id="s1">
+  <div class="tag">01 · 是什么</div>
+  <h2>先打个比方：它是个按线索打分的侦探</h2>
+  <p class="big">你报上几个关键词，BM25 挨篇文档核对：这个词出现没有、出现几次、这个词稀不稀罕、这篇文档长不长。核对完给每篇打个分，从高到低排队。它不读意思，只对字面——词对上了才算，对不上，写得再相关也是零分。</p>
+  <p>最笨的打分法是直接数词：出现几次得几分。毛病马上就来——长文档词天然多、把关键词重复一百遍就能刷到第一、满篇都是的口水词和一锤定音的稀有词一个价。BM25 就是给「数词」立了三条规矩，把这三个毛病一个一个堵上（第二屏细讲）：</p>
+  <div class="formula">一篇文档的得分 = 每个问题词的（稀有度 × 打折后的出现次数）全部加起来，再按篇幅拉平</div>
+  <p class="small">名字的来历不用当回事：BM 是 Best Matching（最佳匹配）的缩写，25 是这套打分法在实验室里迭代到的版本序号。它还有个老家名字叫 Okapi BM25，见到别以为是另一个东西。</p>
+  <h3 style="margin-top:20px">顺带认识几个词，只认这几个就够往下读</h3>
+  <div class="twrap"><table>
+    <thead><tr><th style="width:22%">词</th><th style="width:34%">它管什么</th><th>白话解释</th></tr></thead>
+    <tbody>
+      <tr><td class="t">语料库</td><td>被检索的全部文档的集合</td><td>侦探要翻的整个档案室；「稀有」是相对它而言的</td></tr>
+      <tr><td class="t">词频</td><td>一个词在一篇文档里出现几次</td><td>线索在这篇里露面的次数</td></tr>
+      <tr><td class="t">稀有度（IDF）</td><td>一个词在整个库里有多罕见，越罕见权重越高</td><td>满档案室都有的特征不值钱，只在几篇里出现的才是强线索</td></tr>
+      <tr><td class="t">饱和</td><td>词频涨分越来越慢的那条规矩</td><td>第一勺盐有味，第十勺只是更咸，不再加分多少</td></tr>
+      <tr><td class="t">长度拉平</td><td>按篇幅给分数打折/找补的那条规矩</td><td>写十页命中三次，不如写一页命中三次密度高</td></tr>
+      <tr><td class="t">旋钮 k1</td><td>管饱和来得有多快，常用 1.2</td><td>调大：重复出现更值钱；调小：出现一两次就基本封顶</td></tr>
+      <tr><td class="t">旋钮 b</td><td>管长度拉平有多狠，常用 0.75</td><td>调到 0：完全不看长短；调到 1：长文档折得最狠</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s2">
+  <div class="tag">02 · 三条规矩</div>
+  <h2>规矩一：出现算分，但越堆越不值钱</h2>
+  <p>下面这段动画演的就是「饱和」：一篇文档里「苹果」一个一个往里加，看每个新加的词还涨多少分。第一个 +0.29，第二个只剩 +0.11，到第十个只剩 +0.007——不是不给分，是越给越小气。想靠重复关键词刷到第一，在这条规矩面前没戏。</p>
+  <div class="card scene-wrap">
+    <svg id="scene" viewBox="0 0 760 320" role="img" aria-label="词频饱和动画：词越加越多，每次涨分越来越小">
+      <rect x="30" y="40" width="300" height="200" rx="12" fill="none" stroke="var(--mut)" stroke-width="2"/>
+      <text x="180" y="28" text-anchor="middle" font-size="12.5" fill="var(--mut)">一篇文档（长度按全库平均算）</text>
+      <g id="sc-toks"></g>
+      <text x="30" y="282" font-size="12.5" fill="var(--mut)">得分（一格一段，每段 = 多出现一次涨的分）</text>
+      <g id="sc-segs"></g>
+      <rect x="30" y="292" width="330" height="12" rx="6" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+      <path id="sc-curve" fill="none" stroke="var(--acc)" stroke-width="3"/>
+      <line id="sc-limit" x1="440" y1="66" x2="730" y2="66" stroke="var(--shut)" stroke-width="2" stroke-dasharray="6 5"/>
+      <circle id="sc-dot" r="6" fill="var(--acc)"/>
+      <text x="730" y="56" text-anchor="end" font-size="12.5" fill="var(--shut)">天花板：再堆也超不过 0.63</text>
+      <text x="440" y="282" font-size="12.5" fill="var(--mut)">出现次数 →</text>
+      <text x="440" y="40" font-size="12.5" fill="var(--mut)">这个词的得分 →</text>
+    </svg>
+    <div class="scene-read" aria-live="polite">「苹果」已出现 <span id="sc-f">1</span> 次 · 这个词得分 <span id="sc-v">0.29</span> · 刚这一次只涨了 <span id="sc-inc">+0.29</span></div>
+    <p class="hint" style="text-align:center">右边曲线就是左边的账：涨幅一路变平，最后贴着天花板走。k1 决定的就是这条曲线弯得多快。</p>
+  </div>
+  <div class="card kcard" data-k="open">
+    <h3>规矩二：稀有词更值钱</h3>
+    <p>问题里每个词先称一称稀有度：在全库越多文档里出现的词，越不值钱；只在少数文档里露面的词，一出现就是强信号。第三屏的小库里，「苹果」在 5 篇里占了 4 篇，稀有度只值 0.29；「手机」只占 3 篇，值 0.54。所以评测篇靠「手机 ×4」拿了大头分，果园篇把「苹果」写了 3 次也只得 0.49——押错词，堆多少次都白搭。</p>
+  </div>
+  <div class="card kcard" data-k="file">
+    <h3>规矩三：长文档要拉平</h3>
+    <p>长稿篇和短帖篇命中的词一模一样（苹果 ×1、手机 ×1），得分却差了近一倍（0.60 对 1.11）。原因：长稿有 60 个词，命中被篇幅稀释；短帖只有 12 个词，同样的命中密度高得多。BM25 拿每篇的长度跟全库平均长度比，长的打折、短的找补。把旋钮 b 拧到 0 关掉这条规矩，两篇立刻同分（都是 0.83）——第三屏可以亲手验证。</p>
+  </div>
+  <div class="card">
+    <h3>真公式长这样（不用背，认个脸熟）</h3>
+    <div class="formula" style="font-size:16px">得分 = Σ 稀有度 × [ 次数 × (k1+1) ÷ ( 次数 + k1 × (1 − b + b × 本篇长度 ÷ 平均长度) ) ]</div>
+    <p class="small">对着三条规矩逐段看：稀有度管规矩二；中括号里分子分母同涨管规矩一（次数越大，分式越贴近 k1+1 这个天花板）；分母里带长度比的那截管规矩三。以后在文档和面试里见到它，知道每块在干嘛就够了。</p>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="tag">03 · 动手演示</div>
+  <h2>自己拧旋钮：五篇文档当场重排</h2>
+  <p>问题固定是「苹果 手机」，库里五篇文档的词数、篇长都写在每行下面。所有分数都是页面按 BM25 公式当场算的。三个玩法：把 b 拖到 0，看长稿和短帖变同分；把 k1 拖大，看果园篇靠堆词往上爬多少；关掉「手机」，看排名怎么翻。</p>
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="small" style="font-weight:700;color:var(--ink)">问题词（点开/关）：</span>
+      <button class="tokchip on" type="button" id="tk-a">苹果</button>
+      <button class="tokchip on" type="button" id="tk-p">手机</button>
+      <span class="small">稀有度：苹果 0.29（5 篇占 4 篇）· 手机 0.54（5 篇占 3 篇）</span>
+    </div>
+    <div class="demo-grid" style="margin-top:8px">
+      <div>
+        <div class="ctl"><label>k1 · 词频涨分多快封顶<output id="ok1">1.2</output></label><input type="range" id="k1" min="0.5" max="3" step="0.1" value="1.2" aria-label="k1"></div>
+        <div class="ctl"><label>b · 长文档打折多狠<output id="ob">0.75</output></label><input type="range" id="bsl" min="0" max="1" step="0.05" value="0.75" aria-label="b"></div>
+        <div class="presets">
+          <button class="pbtn" type="button" id="btn-def">出厂默认（k1 1.2 · b 0.75）</button>
+          <button class="pbtn alt" type="button" id="btn-nob">关掉长度拉平（b = 0）</button>
+        </div>
+        <div class="readout" id="demo-note"></div>
+      </div>
+      <div class="demo-live" id="doclist" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="tag">04 · 流程讲解</div>
+  <h2>六步：一道问题是怎么变成排名的</h2>
+  <p>点着步骤往下走，每一步旁边的迷你排名都会同步变到那一步该看的样子——不用翻回第三屏。</p>
+  <div class="stepper" id="pipe" data-print-expand></div>
+  <div class="stepbody">
+    <div class="step-grid">
+      <div>
+        <div class="term" id="q-term"></div>
+        <h3 id="q-title"></h3>
+        <p id="q-say"></p>
+        <div class="qctl">
+          <button type="button" id="q-prev">上一步</button>
+          <button type="button" id="q-next">下一步</button>
+          <button type="button" id="q-auto">自动播放</button>
+          <span class="cnt" id="q-cnt"></span>
+        </div>
+      </div>
+      <div class="mini-scene" aria-label="与讲解同步的迷你排名">
+        <div class="small" style="font-weight:700;color:var(--ink)" id="mn-head">问题：苹果 手机</div>
+        <div id="mn-rows"></div>
+        <div class="mini-note" id="mn-note"></div>
+      </div>
+    </div>
+  </div>
+  <div class="print-only">
+    <h3>流程讲解（打印版 · 全步）</h3>
+    <ol>
+      <li><strong>先把问题拆成词</strong>（分词 · 去掉没意义的词）：用户的问题先被切开：「苹果手机壳」和「苹果 手机」在 BM25 眼里是两回事。拆错词，后面算得再准也白搭——中文检索里分词质量直接决定 BM25 的上限。</li>
+      <li><strong>挨篇数词</strong>（每个词出现几次，先记原始账）：对每篇文档数一遍：问题词各出现几次、多长。原始账是：评测篇苹果 ×2、手机 ×4（长 40）；短帖篇各 ×1（长 12）；长稿篇各 ×1（长 60）。只看原始账，长稿和短帖打平。</li>
+      <li><strong>次数打折</strong>（饱和 · 旋钮 k1 管）：次数先过饱和这道关：出现 1 次的含金量最高，往后每次涨分递减。评测篇的手机 ×4 不是 4 倍分，折完约当 ×1.6 用；果园篇苹果 ×3 折完约当 ×1.7 用。k1 越大，曲线弯得越晚、堆词越划算。</li>
+      <li><strong>乘上稀有度</strong>（IDF · 稀有词身价高）：每个词的折后分再乘它在全库的稀有度：苹果占了 4/5 的文档，只值 0.29；手机占 3/5，值 0.54。评测篇的大头分来自手机这一项（0.87），不是来自堆得最多的苹果。</li>
+      <li><strong>按长度拉平</strong>（长度规矩 · 旋钮 b 管）：最后按篇幅找补：长稿 60 个词是平均（31 个）的近两倍，分数被压到 0.60；短帖只有 12 个词，被抬到 1.11。b = 0 时这一步整步跳过，两篇同分 0.83。</li>
+      <li><strong>排名与搭档</strong>（BM25 只是混合检索的一条腿）：最终排名出炉。但记住 BM25 的边界：它只认字面：问题写「退钱」、文档写「退款」，它一分不给——那是余弦相似度那路的活。真实系统里两路各出一份排名，再用 RRF 这类办法合成一份（就是你剪藏的那篇在讲的事）。最终排名：评测 1.24 ＞ 短帖 1.11 ＞ 长稿 0.60 ＞ 果园 0.49 ＞ 无关篇 0。</li>
+    </ol>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="tag">05 · 速查与带走</div>
+  <h2>速查表</h2>
+  <div class="twrap"><table>
+    <thead><tr><th style="width:20%">术语</th><th style="width:36%">作用 / 用途</th><th>白话备注</th></tr></thead>
+    <tbody>
+      <tr><td class="t">BM25</td><td>给文档按关键词相关性打分排名的公式</td><td>按线索打分的侦探规矩，搜索引擎三十多年的当家算法</td></tr>
+      <tr><td class="t">词频</td><td>一个词在一篇里出现几次，是打分的原料</td><td>先数出来，再打折，不是数几次得几分</td></tr>
+      <tr><td class="t">稀有度（IDF）</td><td>词在全库越罕见，权重越高</td><td>强线索才值钱；满库都有的词近似口水词</td></tr>
+      <tr><td class="t">饱和</td><td>词频涨分递减、封顶</td><td>第一勺盐有味，第十勺只是更咸</td></tr>
+      <tr><td class="t">长度拉平</td><td>长文档打折、短文档找补</td><td>比的是命中密度，不是总字数</td></tr>
+      <tr><td class="t">k1</td><td>管饱和曲线弯得多快，常用 1.2</td><td>大 = 堆词更划算，小 = 一两次就封顶</td></tr>
+      <tr><td class="t">b</td><td>管长度拉平的力度，常用 0.75</td><td>0 = 不看长短，1 = 长文档折得最狠</td></tr>
+      <tr><td class="t">分数</td><td>只在同一次检索里比高低</td><td>不是概率、不能跨库比，1.24 不代表「124% 相关」</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="pitfall">
+    <h3>必踩的坑（集中一张卡）</h3>
+    <ul>
+      <li><strong>它只认字面，不认意思：</strong>问「退钱」、文档写「退款」，BM25 给 0 分；型号、人名、编号这类精确词它最强，同义词、换说法它是瞎子。别指望它单独撑起一个 RAG。</li>
+      <li><strong>分数不能跨库、跨次比：</strong>稀有度是拿当前库算的，换一个库，同一篇文档分数全变。拿 BM25 分数当「相关性百分比」、或拿两次检索的分数比高低，都是错的。</li>
+      <li><strong>分词切错，全盘皆输：</strong>「苹果手机」切成一个词还是两个词，命中结果完全不同。中文用 BM25 前先验分词，别默认搜索引擎都处理好了。</li>
+      <li><strong>默认旋钮不是万能药：</strong>k1 = 1.2、b = 0.75 是通用默认值；库里文档长短悬殊、或全是短文本时还照抄，长文档会被压得过头或短文档占尽便宜，要按自己的库验。</li>
+      <li><strong>标题和正文一个价：</strong>裸 BM25 里词出现在哪都一样算；真实系统通常给标题里的词单独加权。自己搭检索时漏了这层，排名会怪。</li>
+    </ul>
+  </div>
+
+  <h3 style="margin-top:24px">最容易混的三组</h3>
+  <details>
+    <summary>BM25 vs 向量检索（余弦）：两条腿，两种眼力</summary>
+    <p>BM25 对字面：词必须出现，胜在精确——查型号、编号、人名、原文句子，它又快又准；向量检索对意思：换个说法、近义词也能捞回来，胜在不认死理。各自的瞎区正好是对方的强项，所以现在的标准做法是两路都跑、再合并排名（混合检索），而不是二选一。</p>
+  </details>
+  <details>
+    <summary>BM25 vs 直接数词：差的就是三条规矩</summary>
+    <p>直接数词没有饱和、没有稀有度、没有长度拉平：长文档和堆词文档永远赢。BM25 不是另一个物种，就是给数词立完规矩的样子。面试里说「BM25 是 TF 的改进版」，改进点就是这三条。</p>
+  </details>
+  <details>
+    <summary>BM25 vs TF-IDF：祖孙关系</summary>
+    <p>TF-IDF 是更早的打分法：词频 × 稀有度，思想和 BM25 同源。BM25 在它身上补了饱和（词频不再线性涨分）和长度拉平这两件 TF-IDF 没有或做得粗的事。见到 TF-IDF 别慌，会了 BM25，它就是少两条规矩的简化版。</p>
+  </details>
+
+  <h3 style="margin-top:24px">自测四题（点开看答案）</h3>
+  <details>
+    <summary>1. 两篇都出现「退款」3 次，一篇 200 词、一篇 2000 词，哪篇分高？</summary>
+    <p>200 词那篇。同样的命中，篇幅短十倍、密度高得多，长度拉平会把短篇抬上去、长篇压下来。</p>
+  </details>
+  <details>
+    <summary>2. 问题词在库里每篇文档都出现，它对排名还有用吗？</summary>
+    <p>几乎没用。哪篇都有，稀有度趋近于 0，乘完之后每篇都加差不多的一点点分，拉不开差距——真正决定排名的是那些只在少数文档里出现的词。</p>
+  </details>
+  <details>
+    <summary>3. 把关键词在一篇里重复 50 次，能刷到第一吗？</summary>
+    <p>不能靠这个。饱和规矩下，第 50 次涨的分约等于零，这个词的得分贴着天花板（稀有度 ×（k1+1））走。堆词最多把这一个词的分数堆满，超不过去。</p>
+  </details>
+  <details>
+    <summary>4. RAG 里已经有了向量检索，为什么还留 BM25 这一路？</summary>
+    <p>因为向量对精确字面不敏感：型号、编号、人名、专有名词这类「必须一字不差」的东西，向量可能捞不准，BM25 一抓一个准。两路互补，合并排名比单用任何一路都稳。</p>
+  </details>
+
+  <div class="closing">
+    <div class="big">一句话带走：BM25 就是给「数词」立了三条规矩的打分法——出现算分但越堆越不值钱，稀有词更值钱，长文档要拉平；它只认字面，所以在 RAG 里和管意思的向量检索搭档干活。</div>
+  </div>
+</section>
+
+<footer>
+  <p>来源与口径：演示小库为本页自造的五篇玩具文档（篇长 12–60 个词），分数按 Lucene / Elasticsearch 通行的 BM25 变体复算：稀有度 = ln(1 + (N − n + 0.5) ÷ (n + 0.5))，默认旋钮 k1 = 1.2、b = 0.75；全库平均篇长 31.4 个词。关键数已独立核算：评测 1.24、短帖 1.11、长稿 0.60、果园 0.49；b = 0 时长稿与短帖同为 0.83；饱和增量从 +0.29 递减到 +0.007（第 10 次）。BM25 出自 Robertson 等人在英国 Okapi 实验室的工作，1994 年前后成形，现为 Elasticsearch / Lucene 的默认打分法。</p>
+  <p>设计注记：动效由本页按场景选配——第二屏为「加词饱和」场景动画（往文档里逐个加词、涨分逐段变窄，演的就是饱和机制本身），第四屏讲解器旁配同屏同步迷你排名，不跨屏联动；正文与标题均为系统字体栈，单文件、无外部依赖。主色为宝蓝，与同系列页面一致。</p>
+</footer>
+</div>
+
+<script>
+function $(id){return document.getElementById(id)}
+function fmt(n){var s=n.toFixed(2); if(s==='-0.00')s='0.00'; return s.replace('-','−')}
+/* ===== BM25 核心（演示与讲解器共用同一套公式） ===== */
+var DOCS=[
+  {id:'pingce', name:'评测篇', dl:40, a:2, p:4, meta:'苹果 ×2 · 手机 ×4 · 长 40'},
+  {id:'duantie', name:'短帖篇', dl:12, a:1, p:1, meta:'苹果 ×1 · 手机 ×1 · 长 12'},
+  {id:'changgao', name:'长稿篇', dl:60, a:1, p:1, meta:'苹果 ×1 · 手机 ×1 · 长 60'},
+  {id:'guoyuan', name:'果园篇', dl:20, a:3, p:0, meta:'苹果 ×3 · 手机 ×0 · 长 20'},
+  {id:'wuguan', name:'无关篇', dl:25, a:0, p:0, meta:'两个词都没有 · 长 25'}
+];
+var AVGDL=31.4, IDF={a:Math.log(1+(5-4+0.5)/(4+0.5)), p:Math.log(1+(5-3+0.5)/(3+0.5))};
+function tfPart(f,dl,k1,b){ if(!f) return 0; var K=k1*(1-b+b*dl/AVGDL); return f*(k1+1)/(f+K) }
+function contrib(doc,term,k1,b){ return tfPart(doc[term],doc.dl,k1,b)*IDF[term] }
+function score(doc,k1,b,useA,useP){ return (useA?contrib(doc,'a',k1,b):0)+(useP?contrib(doc,'p',k1,b):0) }
+/* 主题 */
+(function(){
+  var saved=null; try{saved=localStorage.getItem('bm25-theme')}catch(e){}
+  var dark = saved ? saved==='dark' : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', dark?'dark':'light');
+  var btn=$('themebtn');
+  function sync(){btn.textContent = document.documentElement.getAttribute('data-theme')==='dark' ? '浅色' : '深色'}
+  sync();
+  btn.addEventListener('click',function(){
+    var now = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme',now);
+    try{localStorage.setItem('bm25-theme',now)}catch(e){}
+    sync();
+  });
+})();
+/* 表格移动端卡片化 */
+document.querySelectorAll('table').forEach(function(tb){
+  var heads=[].map.call(tb.querySelectorAll('thead th'),function(th){return th.textContent.trim()});
+  tb.querySelectorAll('tbody tr').forEach(function(tr){
+    [].forEach.call(tr.children,function(td,i){ if(!td.hasAttribute('colspan')) td.setAttribute('data-th', heads[i]||'') });
+  });
+});
+/* 第二屏：饱和场景动画 */
+(function(){
+  var NS='http://www.w3.org/2000/svg';
+  var vals=[], prev=0;
+  for(var f=1;f<=10;f++){ var v=tfPart(f,AVGDL,1.2,0.75)*IDF.a; vals.push({v:v,inc:v-prev}); prev=v }
+  var curve='';
+  for(var x=0;x<=10;x+=0.25){ var y=tfPart(x,AVGDL,1.2,0.75)*IDF.a; curve+=(x===0?'M':'L')+(440+x*29).toFixed(1)+' '+(250-y*290).toFixed(1)+' '; }
+  $('sc-curve').setAttribute('d',curve);
+  function draw(f){
+    var toks=$('sc-toks'); toks.innerHTML='';
+    for(var i=0;i<f;i++){
+      var t=document.createElementNS(NS,'g');
+      var cx=70+(i%5)*48, cy=80+Math.floor(i/5)*56;
+      t.innerHTML='<rect x="'+(cx-20)+'" y="'+(cy-16)+'" width="40" height="32" rx="9" fill="none" stroke="var(--acc)" stroke-width="2"/><text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-size="12.5" fill="var(--acc)" font-weight="700">苹果</text>';
+      toks.appendChild(t);
+    }
+    var segs=$('sc-segs'); segs.innerHTML=''; var x0=30;
+    for(var j=0;j<f;j++){
+      var w=vals[j].inc*520;
+      var r=document.createElementNS(NS,'rect');
+      r.setAttribute('x',x0); r.setAttribute('y',292); r.setAttribute('width',Math.max(w-2,1)); r.setAttribute('height',12); r.setAttribute('rx',5);
+      r.setAttribute('fill','var(--acc)'); r.setAttribute('opacity',(1-j*0.08).toFixed(2));
+      segs.appendChild(r); x0+=w;
+    }
+    var d=$('sc-dot'); d.setAttribute('cx',440+f*29); d.setAttribute('cy',250-vals[f-1].v*290);
+    $('sc-f').textContent=f;
+    $('sc-v').textContent=fmt(vals[f-1].v);
+    $('sc-inc').textContent='+'+fmt(vals[f-1].inc);
+  }
+  var reduce=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ draw(3); return }
+  var vis=true, run=true, f=1;
+  if('IntersectionObserver' in window){ new IntersectionObserver(function(en){vis=en[0].isIntersecting},{threshold:.05}).observe($('scene')); }
+  document.addEventListener('visibilitychange',function(){run=!document.hidden});
+  draw(1);
+  setInterval(function(){ if(run&&vis){ f=f%10+1; draw(f) } },800);
+})();
+/* 第三屏：完整计算器 */
+(function(){
+  var useA=true, useP=true;
+  function render(){
+    var k1=parseFloat($('k1').value), b=parseFloat($('bsl').value);
+    $('ok1').textContent=k1.toFixed(1); $('ob').textContent=b.toFixed(2);
+    var rows=DOCS.map(function(d){ return {d:d, s:score(d,k1,b,useA,useP), ca:useA?contrib(d,'a',k1,b):0, cp:useP?contrib(d,'p',k1,b):0} });
+    rows.sort(function(x,y){return y.s-x.s});
+    var max=Math.max.apply(null, rows.map(function(r){return r.s}).concat([0.01]));
+    $('doclist').innerHTML=rows.map(function(r,i){
+      return '<div class="docrow"><div><div class="dn">'+(i+1)+'. '+r.d.name+'</div><div class="dm">'+r.d.meta+'</div></div>'
+        +'<div><div class="bar"><i style="width:'+(r.s/max*100).toFixed(1)+'%"></i></div>'
+        +'<div class="dm">苹果贡献 '+fmt(r.ca)+' · 手机贡献 '+fmt(r.cp)+'</div></div>'
+        +'<div class="ds">'+fmt(r.s)+'</div></div>';
+    }).join('');
+    var d3=rows.filter(function(r){return r.d.id==='changgao'})[0], d4=rows.filter(function(r){return r.d.id==='duantie'})[0];
+    var note='当前第一名：<b>'+rows[0].d.name+'（'+fmt(rows[0].s)+'）</b>。';
+    if(b===0){ note+='<br>b = 0：长度拉平已关，长稿篇和短帖篇同为 <b>'+fmt(d3.s)+'</b>——命中一样、分毫不差，这就是规矩三关掉的样子。' }
+    else{ note+='<br>长稿篇 '+fmt(d3.s)+' 对短帖篇 '+fmt(d4.s)+'：中的词一模一样，差的全是篇幅。' }
+    if(!useP){ note+='<br>「手机」已关：只剩苹果一个词，评测篇的大头分没了，排名靠的是苹果的次数和篇幅。' }
+    if(!useA){ note+='<br>「苹果」已关：果园篇直接归零——它堆了 3 次的词不在问题里，一分不值。' }
+    $('demo-note').innerHTML=note;
+  }
+  $('k1').addEventListener('input',render);
+  $('bsl').addEventListener('input',render);
+  $('tk-a').addEventListener('click',function(){ useA=!useA; this.classList.toggle('on',useA); render() });
+  $('tk-p').addEventListener('click',function(){ useP=!useP; this.classList.toggle('on',useP); render() });
+  $('btn-def').addEventListener('click',function(){ $('k1').value=1.2; $('bsl').value=0.75; render() });
+  $('btn-nob').addEventListener('click',function(){ $('bsl').value=0; render() });
+  render();
+})();
+/* 第四屏讲解器 + 同屏迷你排名 */
+var QSTEPS=[
+  {t:'先拆问题',term:'分词 · 问题变成词',c:'raw',note:'迷你排名先空着：问题刚拆成「苹果」「手机」两个词，还没开始算分。拆词是第一步，也是中文检索最容易翻车的一步。',say:'用户的问题先被切成词：「苹果 手机」是两个词。BM25 眼里只有词，没有整句话——拆错词，比如把「苹果手机」切成一个词去找，后面算得再精细也对不上号。先拆词，再谈打分。'},
+  {t:'挨篇数词',term:'原始账 · 次数与篇长',c:'raw',note:'条长 = 命中的总次数（苹果+手机）。长稿和短帖都是 2 次，并列——只数词，排名就长这样，平得没法用。',say:'对每篇文档数一遍原始账：评测篇中了 6 次（苹果 ×2、手机 ×4），果园篇 3 次，长稿和短帖各 2 次。如果到此为止，长稿和短帖打平，堆词的果园篇还排到了前面——这正是要立规矩的原因。'},
+  {t:'次数打折',term:'饱和 · k1 管这一层',c:'tf',note:'条长 = 打折后的词频（还没乘稀有度）。手机 ×4 折完约当 ×1.6，苹果 ×3 约当 ×1.7——次数多的被压得最明显。',say:'次数先过饱和：出现第 1 次最值钱，越往后越不值钱。评测篇的手机出现 4 次，折完只按约 1.6 次算；果园篇苹果 3 次，折完约 1.7 次。这一层由旋钮 k1 管，k1 越大折得越轻。迷你排名的条已经按折后数重画了。'},
+  {t:'乘稀有度',term:'IDF · 稀有词身价高',c:'idf',note:'条长 = 折后词频 × 稀有度（还没拉平长度）。果园篇只靠苹果：词不稀有，身价低，掉到了后面。',say:'折完的次数再乘每个词的稀有度：苹果在 5 篇里占 4 篇，只值 0.29；手机占 3 篇，值 0.54。评测篇的大头分来自手机这一项。果园篇押错了词——堆的是不值钱的那个，排名掉下去了。'},
+  {t:'按长度拉平',term:'长度规矩 · b 管这一层',c:'full',note:'这就是最终分：长稿 0.60、短帖 1.11。中的词一样，篇幅一个 60、一个 12，拉平之后差了近一倍。',say:'最后一步按篇幅找补：拿每篇长度和平均长度 31.4 比。长稿是平均近两倍，分被压下去；短帖不到平均一半，被抬上来。b 就是这一步的力度，b = 0 时整步跳过，两篇同分。'},
+  {t:'排名与搭档',term:'出排名 · 再和向量路合并',c:'full',note:'最终排名：评测 1.24 ＞ 短帖 1.11 ＞ 长稿 0.60 ＞ 果园 0.49 ＞ 无关 0。这份名单随后会和向量路的名单合并——那就是 RRF 的活。',say:'最终排名出炉。但记住 BM25 的边界：它只认字面。问题写「退钱」、文档写「退款」，它给零分——这种活归余弦相似度那一路。真实系统两路各出一份排名，再用 RRF 合成一份，你刚剪藏的那篇文章讲的就是这最后一步。'}
+];
+var qpipe=$('pipe'),qcur=0,qtimer=null;
+QSTEPS.forEach(function(s,i){
+  var b=document.createElement('button');
+  b.type='button'; b.className='st'; b.textContent=s.t;
+  b.addEventListener('click',function(){ qstop(); qgo(i) });
+  qpipe.appendChild(b);
+});
+function miniDraw(step){
+  var k1=1.2,b=0.75, rows;
+  if(step.c==='raw'){
+    rows=DOCS.map(function(d){ return {n:d.name, v:d.a+d.p, lab:(d.a+d.p)+' 次'} });
+  } else if(step.c==='tf'){
+    rows=DOCS.map(function(d){ return {n:d.name, v:tfPart(d.a,d.dl,k1,b)+tfPart(d.p,d.dl,k1,b), lab:fmt(tfPart(d.a,d.dl,k1,b)+tfPart(d.p,d.dl,k1,b))} });
+  } else if(step.c==='idf'){
+    rows=DOCS.map(function(d){ var K=k1; var fa=d.a? d.a*(K+1)/(d.a+K):0, fp=d.p? d.p*(K+1)/(d.p+K):0; var v=fa*IDF.a+fp*IDF.p; return {n:d.name, v:v, lab:fmt(v)} });
+  } else {
+    rows=DOCS.map(function(d){ var v=score(d,k1,b,true,true); return {n:d.name, v:v, lab:fmt(v)} });
+  }
+  rows.sort(function(x,y){return y.v-x.v});
+  var max=Math.max.apply(null, rows.map(function(r){return r.v}).concat([0.01]));
+  $('mn-rows').innerHTML=rows.map(function(r){
+    return '<div class="minirow"><span>'+r.n+'</span><div class="bar"><i style="width:'+(r.v/max*100).toFixed(1)+'%"></i></div><span style="text-align:right;font-weight:700">'+r.lab+'</span></div>';
+  }).join('');
+  $('mn-note').textContent=step.note;
+}
+function qshow(){
+  var s=QSTEPS[qcur];
+  $('q-title').textContent=s.t; $('q-term').textContent=s.term; $('q-say').textContent=s.say;
+  $('q-cnt').textContent='第 '+(qcur+1)+' / '+QSTEPS.length+' 步';
+  [].forEach.call(qpipe.children,function(el,j){ el.classList.toggle('on', j===qcur) });
+  miniDraw(s);
+}
+function qgo(i){ qcur=Math.max(0,Math.min(QSTEPS.length-1,i)); qshow() }
+function qstop(){ if(qtimer){ clearInterval(qtimer); qtimer=null; $('q-auto').textContent='自动播放' } }
+$('q-prev').addEventListener('click',function(){ qstop(); qgo(qcur-1) });
+$('q-next').addEventListener('click',function(){ qstop(); qgo(qcur+1) });
+$('q-auto').addEventListener('click',function(){
+  if(qtimer){ qstop(); return }
+  $('q-auto').textContent='停止播放';
+  qtimer=setInterval(function(){ if(qcur>=QSTEPS.length-1){ qstop(); return } qgo(qcur+1) }, 3200);
+});
+qgo(0);
+/* 入场微动 + 导航高亮 */
+(function(){
+  var els=document.querySelectorAll('.rv');
+  if(!('IntersectionObserver' in window)){ els.forEach(function(e){e.classList.add('in')}); return }
+  var io=new IntersectionObserver(function(en){ en.forEach(function(x){ if(x.isIntersecting){ x.target.classList.add('in'); io.unobserve(x.target) } }) },{threshold:.12});
+  els.forEach(function(e){ io.observe(e) });
+  var links=[].slice.call(document.querySelectorAll('#navlinks a'));
+  var spy=new IntersectionObserver(function(en){
+    en.forEach(function(x){ if(x.isIntersecting){ links.forEach(function(a){ a.classList.toggle('on', a.getAttribute('href')==='#'+x.target.id) }) } });
+  },{rootMargin:'-40% 0px -55% 0px'});
+  document.querySelectorAll('section').forEach(function(s){ spy.observe(s) });
+})();
+/* 打印展开 */
+(function(){
+  var saved=[];
+  function expand(){
+    saved=[];
+    document.querySelectorAll('details:not([open])').forEach(function(d){saved.push([d,'a']);d.setAttribute('open','');});
+  }
+  function restore(){ saved.reverse().forEach(function(r){ r[0].removeAttribute('open') }); saved=[]; }
+  addEventListener('beforeprint',expand);
+  addEventListener('afterprint',restore);
+})();
+</script>
+</body>
+</html>
