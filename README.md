@@ -26,6 +26,18 @@
 
 此外还有：主视觉生图优先（SVG 保底）、版式变体层（每页选一组连贯气质，不套同一个模子）、截图评分闭环（8 项量表，均分 ≥8 才交付）、可选 Edge-TTS 配音内嵌分支（按讲解步分段内嵌，默认关闭）。
 
+## 口令：一句话唤起
+
+装好后不用记命令、不用配参数——对 Agent 说一句口令就触发：
+
+> **一页纸 + 要解释的对象**
+
+> 一页纸 勾股定理
+> 一页纸 BM25
+> 一页纸讲讲卡门线
+
+说得随意些也行：「用一页读懂给我讲讲 X」「做个页面科普一下 X」「把这套流程做成一页介绍页」——都按同一套规范出页（触发词写在 `SKILL.md` 的 description 里，Agent 读到即调用）。
+
 ## 快速开始
 
 ```bash
@@ -33,12 +45,7 @@ git clone https://github.com/mantou2046/onepager-explainer.git
 cp -r onepager-explainer ~/.claude/skills/onepager-explainer
 ```
 
-适用于任何读取 `SKILL.md` 的 Agent 环境（Claude Code、Muse、WorkBuddy 等；其他 Agent 把目录放进它的技能/规则目录即可）。然后对 Agent 说：
-
-> 一页纸 勾股定理
-> 用一页读懂给我讲讲卡门线
-> 做个页面科普一下 BM25
-> 把这套流程做成一页介绍页
+适用于任何读取 `SKILL.md` 的 Agent 环境（Claude Code、Muse、WorkBuddy 等；其他 Agent 把目录放进它的技能/规则目录即可）。装好后对 Agent 说一句口令即可，最简式就是「一页纸 勾股定理」。
 
 ## 脚本依赖（按需）
 
